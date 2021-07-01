@@ -1,9 +1,7 @@
 import pandas as pd
-import plotly.express as px
 from fbprophet import Prophet
 import datetime as dt
 import pandas_datareader as web
-import plotly.io as pio
 import numpy as np
 import tkinter as tk
 from tkinter import *
@@ -13,12 +11,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.svm import SVR
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble import GradientBoostingRegressor
-
+from sklearn.kernel_ridge import KernelRidge
+from matplotlib import pyplot as plt
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
 #Getting the stock name
-company = "TRY=X"
+company = "TSLA"
 predict_day = 30
 
 #Initializing dates
@@ -48,19 +47,16 @@ prediction_days = 30   #Predict n days into the future
 future = m.make_future_dataframe(periods=prediction_days)
 forecast = m.predict(future)
 
-#Visualizing data
-#px.line(forecast, x='ds', y='yhat')
-
 #Saving results
 forecast.to_csv('forecast.csv')
 
 #Getting real and predicted prices
 val = forecast['yhat'].values
 today = data['Close'].values
+prophet_prediction = val[-prediction_days:]
 
-#Getting today's price and predicted price
+#Getting today's price
 today_price = today[len(today)-1]
-predicted_price_prophet = val[len(val)-1-prediction_days+predict_day]
 
 ##Linear regression calculations
 
@@ -82,7 +78,7 @@ y = np.array(df_new["Prediction"])
 y = y[:-prediction_days]
 
 #Split %75 training %25 testing
-x_train, x_test, y_train, y_test = train_test_split(x,y, test_size = 0.25)
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25, random_state=1)
 
 #Creating and training the linear regression model
 lr = LinearRegression()
@@ -99,6 +95,10 @@ rfr.fit(x_train, y_train)
 #Creating and training gradient boosting regressor model
 gbr = GradientBoostingRegressor()
 gbr.fit(x_train, y_train)
+
+#Creating and training kernel ridge regressor model
+kr = KernelRidge()
+kr.fit(x_train, y_train)
 
 #Set x_forecast equal to last 30 rows of the "Close" prices
 x_forecast = np.array(df_new.drop(["Prediction"], 1))[-prediction_days:]
@@ -119,55 +119,48 @@ print(rfr_prediction)
 gbr_prediction = gbr.predict(x_forecast)
 print(gbr_prediction)
 
+#Printing kernel ridge regression results for n days
+kr_prediction = kr.predict(x_forecast)
+print(kr_prediction)
+
+#Converting array to the numpy array to get the average
+prophet_prediction = np.array(prophet_prediction)
+lr_prediction = np.array(lr_prediction)
+svr_prediction = np.array(svr_prediction)
+rfr_prediction = np.array(rfr_prediction)
+gbr_prediction = np.array(gbr_prediction)
+kr_prediction = np.array(kr_prediction)
+
+#Calculating the avarage for last 30 days
+average = (prophet_prediction + lr_prediction + svr_prediction + rfr_prediction + gbr_prediction + kr_prediction)/6.0
+
+#Converting it back to normal array
+np.asarray(average)
+print(average)
+
 #Getting predicted price from different regression models
-predicted_price_linear_regression = lr_prediction[len(lr_prediction)-1-prediction_days+predict_day]
-predicted_price_sv_regression = svr_prediction[len(svr_prediction)-1-prediction_days+predict_day]
-predicted_price_rfr_regression = rfr_prediction[len(rfr_prediction)-1-prediction_days+predict_day]
-predicted_price_gbr_regression = gbr_prediction[len(gbr_prediction)-1-prediction_days+predict_day]
+average_prediction = average[len(average)-1-prediction_days+predict_day]
 
 print("___________________________________________________")
 
-#Checking for buying or selling FBProphet
-if(today_price < predicted_price_prophet):
-    print("You should buy or keep your " + company + " share (FB Prophet Result)")
+#Checking for buying or selling check
+if(today_price < average_prediction):
+    print("You should buy or keep your " + company + " share ")
 
 else:
-    print("You should sell your " + company + " share (FB Prophet Result)")
-
-#Checking for buying or selling Linear Regression
-if(today_price < predicted_price_linear_regression):
-    print("You should buy or keep your " + company + " share (Linear Regression Result)")
-
-else:
-    print("You should sell your " + company + " share (Linear Regression Result)")
-
-#Checking for buying or selling Support Vector Regression
-if(today_price < predicted_price_sv_regression):
-    print("You should buy or keep your " + company + " share (Support Vector Regression Result)")
-
-else:
-    print("You should sell your " + company + " share (Support Vector Regression Result)")
-
-#Checking for buying or selling Random Forest Regression
-if(today_price < predicted_price_rfr_regression):
-    print("You should buy or keep your " + company + " share (Random Forest Regression Result)")
-
-else:
-    print("You should sell your " + company + " share (Random Forest Regression Result)")
-
-#Checking for buying or selling Gradient Boosting Regression
-if(today_price < predicted_price_gbr_regression):
-    print("You should buy or keep your " + company + " share (Gradient Boosting Regression Result)")
-
-else:
-    print("You should sell your " + company + " share (Gradient Boosting Regression Result)")
+    print("You should sell your " + company + " share ")
 
 
-print("___________________________________________________")
-
+#Showing todays and future price
 print("Current price: " + str(today_price))
-print("Price prediction after " + str(predict_day) + " days (FBProphet Result): " + str(predicted_price_prophet))
-print("Price prediction after " + str(predict_day) + " days (Linear Regression Result): " + str(predicted_price_linear_regression))
-print("Price prediction after " + str(predict_day) + " days (Support Vector Regression Result): " + str(predicted_price_sv_regression))
-print("Price prediction after " + str(predict_day) + " days (Random Forest Regression Result): " + str(predicted_price_rfr_regression))
-print("Price prediction after " + str(predict_day) + " days (Gradient Boosting Regression Result): " + str(predicted_price_gbr_regression))
+print("Price prediction after " + str(predict_day) + " days: " + str(average_prediction))
+
+#Getting dates today to 30 days later
+date_list = pd.date_range(end=dt.datetime.today() + dt.timedelta(days=30), periods=30).to_pydatetime().tolist()
+
+#Plotting the graph using MatPlotLib
+plt.plot_date(date_list,average, linestyle="solid")
+plt.gcf().autofmt_xdate()
+plt.xlabel("Date")
+plt.ylabel("Stock price")
+plt.show()
