@@ -13,8 +13,12 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.kernel_ridge import KernelRidge
 from matplotlib import pyplot as plt
+import yfinance as yf
+import pandas_datareader.data as pdr
 
 pd.options.mode.chained_assignment = None  # default='warn'
+
+yf.pdr_override()
 
 #Getting the stock name
 company = "TSLA"
@@ -25,7 +29,8 @@ start = dt.datetime(2016, 1, 1)
 end = dt.datetime.now()
 
 #Getting stock prices from yahoo
-data = web.DataReader(company, 'yahoo', start, end)
+#data = web.DataReader(company, 'yahoo', start, end)
+data = pdr.get_data_yahoo(company, data_source='yahoo', start=start, end=end)
 
 #FB prophet Prediction
 data.to_csv('test.csv')
@@ -105,22 +110,27 @@ x_forecast = np.array(df_new.drop(["Prediction"], 1))[-prediction_days:]
 
 #Printing linear regression model results for n days
 lr_prediction = lr.predict(x_forecast)
+print("Linear regression:")
 print(lr_prediction)
 
 #Printing support vector regression model results for n days
 svr_prediction = svr.predict(x_forecast)
+print("Support vector regression:")
 print(svr_prediction)
 
 #Printing random forest regression results for n days
 rfr_prediction = rfr.predict(x_forecast)
+print("Random forest regression:")
 print(rfr_prediction)
 
 #Printing gradient boosting regression results for n days
 gbr_prediction = gbr.predict(x_forecast)
+print("Gradient boosting regression:")
 print(gbr_prediction)
 
 #Printing kernel ridge regression results for n days
 kr_prediction = kr.predict(x_forecast)
+print("Kernel ridge regression:")
 print(kr_prediction)
 
 #Converting array to the numpy array to get the average
@@ -159,8 +169,37 @@ print("Price prediction after " + str(predict_day) + " days: " + str(average_pre
 date_list = pd.date_range(end=dt.datetime.today() + dt.timedelta(days=30), periods=30).to_pydatetime().tolist()
 
 #Plotting the graph using MatPlotLib
-plt.plot_date(date_list,average, linestyle="solid")
-plt.gcf().autofmt_xdate()
-plt.xlabel("Date")
-plt.ylabel("Stock price")
+#plt.plot_date(date_list,average, linestyle="solid")
+#plt.gcf().autofmt_xdate()
+#plt.xlabel("Date")
+#plt.ylabel("Stock price")
+#plt.show()
+
+#Drawing multiple graphs in one figure
+figure, axis = plt.subplots(3, 2)
+
+#FB Prophet Graph
+axis[0, 0].plot(date_list, prophet_prediction)
+axis[0, 0].set_title("FB Prophet")
+
+#Linear Regression Graph
+axis[0, 1].plot(date_list, lr_prediction)
+axis[0, 1].set_title("Linear Regression")
+
+#Support Vector Regression Graph
+axis[1, 0].plot(date_list, svr_prediction)
+axis[1, 0].set_title("Support Vector Regression")
+
+#Random Forest Regression Graph
+axis[1, 1].plot(date_list, rfr_prediction)
+axis[1, 1].set_title("Random Forest Regression")
+
+#Gradient Boosting Regression Graph
+axis[2, 0].plot(date_list, gbr_prediction)
+axis[2, 0].set_title("Gradient Boosting Regression")
+
+#Kernel Ridge Regression Graph
+axis[2, 1].plot(date_list, kr_prediction)
+axis[2, 1].set_title("Kernel Ridge Regression")
+
 plt.show()
