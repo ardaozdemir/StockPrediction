@@ -3,7 +3,7 @@ from fbprophet import Prophet
 import datetime as dt
 import pandas_datareader as web
 import numpy as np
-import tkinter as tk
+import tkinter as tk, tkinter
 from tkinter import *
 from PIL import Image, ImageTk
 from sklearn.linear_model import LinearRegression
@@ -15,8 +15,12 @@ from sklearn.kernel_ridge import KernelRidge
 from matplotlib import pyplot as plt
 import yfinance as yf
 import pandas_datareader.data as pdr
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
+from matplotlib.backend_bases import key_press_handler
+from matplotlib.figure import Figure
 
 pd.options.mode.chained_assignment = None  # default='warn'
+global avg, dates
 
 def predict_stock():
     yf.pdr_override()
@@ -162,18 +166,37 @@ def plot_prediction(average, date_list):
     plt.show()
 
 def display():
-
     predicted_price, avg, dates = predict_stock()
 
-    price_display = tk.Text(master=root, height=3, width=30)
-    price_display.grid(row=7, column=0)
+    #price_display = tk.Text(master=root, height=1, width=30)
+    #price_display.grid(row=7, column=0)
 
-    price_display.insert(tk.END, "Predicted price: " + str(int(predicted_price)) + "$")
+    #price_display.insert(tk.END, "Predicted price: " + str(int(predicted_price)) + "$")
+
+    prediction_day_label = Label(root, text="Predicted price: " + str(int(predicted_price)) + "$", font=('Helvetica', 12, 'bold'), bg='#038b9e', fg="orange")
+
+    prediction_day_label.grid(row=7, column=0)
+
+    window = Tk()
+    window.wm_title("Stock Prediction Graph")
+    window.minsize(1400, 400)
+
+    fig = Figure(figsize=(5,4), dpi=100)
+    fig.add_subplot(111).plot_date(dates, avg, linestyle="solid")
+
+    canvas2 = FigureCanvasTkAgg(fig, master=window)
+    canvas2.draw()
+    canvas2.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
+
+    toolbar = NavigationToolbar2Tk(canvas2, window)
+    toolbar.update()
+    canvas2.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
+
 
 #Creating the window
 root = tk.Tk()
 root.title("Stock Price Advisor")
-canvas = tk.Canvas(root, width=600, height=800)
+canvas = tk.Canvas(root, width=600, height=400)
 canvas.grid(columnspan=1, rowspan=10)
 
 bg = Image.open("background.png")

@@ -15,13 +15,14 @@ from sklearn.kernel_ridge import KernelRidge
 from matplotlib import pyplot as plt
 import yfinance as yf
 import pandas_datareader.data as pdr
+import matplotlib.ticker as ticker
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
 yf.pdr_override()
 
 #Getting the stock name
-company = "TSLA"
+company = "AAPL"
 predict_day = 30
 
 #Initializing dates
@@ -90,7 +91,7 @@ lr = LinearRegression()
 lr.fit(x_train, y_train)
 
 #Creating and training the support vector regression model
-svr = SVR(kernel="rbf", C=1e3, gamma=0.1)
+svr = SVR(kernel="rbf", C=1e3, gamma=0.00001)
 svr.fit(x_train, y_train)
 
 #Creating and training random forest regressor model
@@ -115,8 +116,8 @@ print(lr_prediction)
 
 #Printing support vector regression model results for n days
 svr_prediction = svr.predict(x_forecast)
-print("Support vector regression:")
-print(svr_prediction)
+#print("Support vector regression:")
+#print(svr_prediction)
 
 #Printing random forest regression results for n days
 rfr_prediction = rfr.predict(x_forecast)
@@ -146,7 +147,7 @@ average = (prophet_prediction + lr_prediction + svr_prediction + rfr_prediction 
 
 #Converting it back to normal array
 np.asarray(average)
-print(average)
+#print(average)
 
 #Getting predicted price from different regression models
 average_prediction = average[len(average)-1-prediction_days+predict_day]
@@ -168,6 +169,44 @@ print("Price prediction after " + str(predict_day) + " days: " + str(average_pre
 #Getting dates today to 30 days later
 date_list = pd.date_range(end=dt.datetime.today() + dt.timedelta(days=30), periods=30).to_pydatetime().tolist()
 
+for i in range(len(date_list)):
+    date_list[i] = date_list[i].strftime('%d-%m')
+
+#This function creates the new array with intersections
+def new_prediction(lr_prediction, rfr_prediction, gbr_prediction, kr_prediction):
+    new_predicts = []
+    length = len(lr_prediction)
+    for i in range(length):
+        compare = []
+        compare.append(lr_prediction[i])
+        compare.append(rfr_prediction[i])
+        compare.append(gbr_prediction[i])
+        compare.append(kr_prediction[i])
+
+        new_predicts.append(minDiffPairs(compare, 4))
+
+    return new_predicts
+
+#This function finds the closest elements in array
+def minDiffPairs(arr, n):
+    if n <= 1: return
+
+    # Sorting array
+    arr.sort()
+
+    #Comparing the differences
+    minDiff = arr[1] - arr[0]
+    for i in range(2, n):
+        minDiff = min(minDiff, arr[i] - arr[i - 1])
+
+    #Finding the numbers with the less difference
+    for i in range(1, n):
+        if (arr[i] - arr[i - 1]) == minDiff:
+            return arr[i - 1]
+
+#Getting new data with intersections
+new_predicts = new_prediction(lr_prediction, rfr_prediction, gbr_prediction, kr_prediction)
+
 #Plotting the graph using MatPlotLib
 #plt.plot_date(date_list,average, linestyle="solid")
 #plt.gcf().autofmt_xdate()
@@ -176,30 +215,46 @@ date_list = pd.date_range(end=dt.datetime.today() + dt.timedelta(days=30), perio
 #plt.show()
 
 #Drawing multiple graphs in one figure
-figure, axis = plt.subplots(3, 2)
+#figure, axis = plt.subplots(1, 2)
 
+fig, ax = plt.subplots()
+
+ax.plot_date(date_list, new_predicts, linestyle="solid", color='r')
+ax.plot_date(date_list, lr_prediction, linestyle="solid", color='g')
+#plt.plot_date(date_list, svr_prediction, linestyle="solid", color='b')
+ax.plot_date(date_list, rfr_prediction, linestyle="solid", color='c')
+ax.plot_date(date_list, gbr_prediction, linestyle="solid", color='y')
+ax.plot_date(date_list, kr_prediction, linestyle="solid", color='k')
+#plt.plot_date(date_list, average, linestyle="solid", color='m')
+plt.xlabel("Days")
+plt.ylabel("Stock Price")
+plt.title("Predictions")
+ax.xaxis.set_major_locator(ticker.MultipleLocator(3))
+
+# To load the display window
+plt.show()
 #FB Prophet Graph
-axis[0, 0].plot(date_list, prophet_prediction)
-axis[0, 0].set_title("FB Prophet")
+#axis[0, 0].plot(date_list, prophet_prediction)
+#axis[0, 0].set_title("FB Prophet")
 
 #Linear Regression Graph
-axis[0, 1].plot(date_list, lr_prediction)
-axis[0, 1].set_title("Linear Regression")
+#axis[0, 1].plot(date_list, lr_prediction)
+#axis[0, 1].set_title("Linear Regression")
 
 #Support Vector Regression Graph
-axis[1, 0].plot(date_list, svr_prediction)
-axis[1, 0].set_title("Support Vector Regression")
+#axis[1, 0].plot(date_list, svr_prediction)
+#axis[1, 0].set_title("Support Vector Regression")
 
 #Random Forest Regression Graph
-axis[1, 1].plot(date_list, rfr_prediction)
-axis[1, 1].set_title("Random Forest Regression")
+#axis[1, 1].plot(date_list, rfr_prediction)
+#axis[1, 1].set_title("Random Forest Regression")
 
 #Gradient Boosting Regression Graph
-axis[2, 0].plot(date_list, gbr_prediction)
-axis[2, 0].set_title("Gradient Boosting Regression")
+#axis[2, 0].plot(date_list, gbr_prediction)
+#axis[2, 0].set_title("Gradient Boosting Regression")
 
 #Kernel Ridge Regression Graph
-axis[2, 1].plot(date_list, kr_prediction)
-axis[2, 1].set_title("Kernel Ridge Regression")
+#axis[2, 1].plot(date_list, kr_prediction)
+#axis[2, 1].set_title("Kernel Ridge Regression")
 
-plt.show()
+#plt.show()
